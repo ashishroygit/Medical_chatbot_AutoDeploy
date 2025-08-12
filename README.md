@@ -24,3 +24,4 @@ conda activate medibot
 pip install -r requirements.txt
 ```
 
+### Updated Readme
