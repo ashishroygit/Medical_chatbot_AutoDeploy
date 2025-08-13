@@ -24,6 +24,13 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
+      - name: Debug workspace
+        run: |
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          pwd
+          ls -la
+          find . -maxdepth 3 -name 'Dockerfile*' -print
+
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
         env:
