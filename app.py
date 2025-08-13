@@ -1,5 +1,3 @@
-## Importing all libraries
-
 from flask import Flask, render_template, jsonify, request
 from src.helper import download_embeddings
 from langchain_pinecone import PineconeVectorStore
@@ -11,6 +9,8 @@ from dotenv import load_dotenv
 from src.prompt import *
 from pathlib import Path
 import os
+import traceback
+from flask import Response
 
 app = Flask(__name__)
 
@@ -80,10 +80,13 @@ def chat():
         return "Please type a message.", 400
     try:
         result = rag_chain.invoke({"input": user_msg})
+        # Inspect what keys come back:
+        # print("RAG keys:", list(result.keys()))
         return str(result.get("answer", "")).strip()
     except Exception as e:
-        # Log this server-side as well if you like
-        return "Sorry, something went wrong processing your request.", 500
+        traceback.print_exc()  # prints full stack to your console
+        # Return the error text to your browser for now (DEV ONLY)
+        return Response(f"Error: {e}", status=500, mimetype="text/plain")
 
 if __name__ == "__main__":
     # Note: Flask debug reloader can import the module twice.
