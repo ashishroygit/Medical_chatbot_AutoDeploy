@@ -43,7 +43,6 @@ jobs:
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
   Continuous-Deployment:
-
     needs: Continuous-Integration
     runs-on: self-hosted
     steps:
