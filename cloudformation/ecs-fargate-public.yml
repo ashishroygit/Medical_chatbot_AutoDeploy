@@ -20,6 +20,12 @@ Parameters:
   ImageUri:
     Type: String
     Description: "ECR image URI with tag (e.g. 123456789012.dkr.ecr.us-east-1.amazonaws.com/medical-chatbot-autodeploy:abcd1234)"
+  OpenAISecretArn:
+    Type: String
+    Description: "ARN of the Secrets Manager secret for OPENAI_API_KEY"
+  PineconeSecretArn:
+    Type: String
+    Description: "ARN of the Secrets Manager secret for PINECONE_API_KEY"
 
 Resources:
   VPC:
@@ -194,11 +200,11 @@ Resources:
             - { Name: PORT, Value: !Sub "${AppPort}" }
           Secrets:
             - Name: OPENAI_API_KEY
-              ValueFrom: !Sub "${ProjectName}/${Env}/OPENAI_API_KEY"
+              ValueFrom: !Ref OpenAISecretArn
             - Name: PINECONE_API_KEY
-              ValueFrom: !Sub "${ProjectName}/${Env}/PINECONE_API_KEY"
+              ValueFrom: !Ref PineconeSecretArn
           LogConfiguration:
-            LogDriver: awslogs  
+            LogDriver: awslogs
             Options:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region

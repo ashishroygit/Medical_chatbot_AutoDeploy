@@ -72,18 +72,21 @@ jobs:
           aws secretsmanager create-secret --name "${PROJECT_NAME}/staging/PINECONE_API_KEY" --secret-string "${{ secrets.PINECONE_API_KEY }}" >/dev/null 2>&1 || \
           aws secretsmanager put-secret-value --secret-id "${PROJECT_NAME}/staging/PINECONE_API_KEY" --secret-string "${{ secrets.PINECONE_API_KEY }}"
 
-      # --- Debug & validate the template being used ---
-      - name: Show template header
+      - name: Resolve secret ARNs (staging)
+        id: sm_arns
         run: |
-          echo "Template path: ${{ env.CFN_TEMPLATE }}"
-          sed -n '1,80p' "${{ env.CFN_TEMPLATE }}"
+          OPENAI_ARN=$(aws secretsmanager describe-secret --secret-id "${PROJECT_NAME}/staging/OPENAI_API_KEY" --query 'ARN' --output text)
+          PINECONE_ARN=$(aws secretsmanager describe-secret --secret-id "${PROJECT_NAME}/staging/PINECONE_API_KEY" --query 'ARN' --output text)
+          echo "openai=$OPENAI_ARN" >> $GITHUB_OUTPUT
+          echo "pinecone=$PINECONE_ARN" >> $GITHUB_OUTPUT
+          echo "OPENAI ARN: $OPENAI_ARN"
+          echo "PINECONE ARN: $PINECONE_ARN"
 
       - name: Validate template with CloudFormation
         run: aws cloudformation validate-template --template-body "file://${{ env.CFN_TEMPLATE }}"
 
       - name: Deploy CFN (staging)
         run: |
-          set -e
           aws cloudformation deploy \
             --stack-name "${PROJECT_NAME}-staging" \
             --template-file "${{ env.CFN_TEMPLATE }}" \
@@ -91,7 +94,9 @@ jobs:
             --parameter-overrides \
               ProjectName="${PROJECT_NAME}" Env="staging" \
               ImageUri="${{ needs.build_and_push.outputs.image_uri }}" \
-              AppPort="${APP_PORT}" ContainerCpu="${CPU}" ContainerMemory="${MEMORY}" DesiredCount="${DESIRED_COUNT}"
+              AppPort="${APP_PORT}" ContainerCpu="${CPU}" ContainerMemory="${MEMORY}" DesiredCount="${DESIRED_COUNT}" \
+              OpenAISecretArn="${{ steps.sm_arns.outputs.openai }}" \
+              PineconeSecretArn="${{ steps.sm_arns.outputs.pinecone }}"
 
       - name: Output ALB DNS (staging)
         id: out
@@ -116,7 +121,7 @@ jobs:
   deploy_production:
     runs-on: ubuntu-latest
     needs: [build_and_push, deploy_staging]
-    environment: production
+    environment: production   # add approval in repo Settings → Environments
     steps:
       - uses: actions/checkout@v4
 
@@ -133,9 +138,18 @@ jobs:
           aws secretsmanager create-secret --name "${PROJECT_NAME}/production/PINECONE_API_KEY" --secret-string "${{ secrets.PINECONE_API_KEY }}" >/dev/null 2>&1 || \
           aws secretsmanager put-secret-value --secret-id "${PROJECT_NAME}/production/PINECONE_API_KEY" --secret-string "${{ secrets.PINECONE_API_KEY }}"
 
+      - name: Resolve secret ARNs (production)
+        id: sm_arns_prod
+        run: |
+          OPENAI_ARN=$(aws secretsmanager describe-secret --secret-id "${PROJECT_NAME}/production/OPENAI_API_KEY" --query 'ARN' --output text)
+          PINECONE_ARN=$(aws secretsmanager describe-secret --secret-id "${PROJECT_NAME}/production/PINECONE_API_KEY" --query 'ARN' --output text)
+          echo "openai=$OPENAI_ARN" >> $GITHUB_OUTPUT
+          echo "pinecone=$PINECONE_ARN" >> $GITHUB_OUTPUT
+          echo "OPENAI ARN: $OPENAI_ARN"
+          echo "PINECONE ARN: $PINECONE_ARN"
+
       - name: Deploy CFN (production)
         run: |
-          set -e
           aws cloudformation deploy \
             --stack-name "${PROJECT_NAME}-production" \
             --template-file "${{ env.CFN_TEMPLATE }}" \
@@ -143,7 +157,9 @@ jobs:
             --parameter-overrides \
               ProjectName="${PROJECT_NAME}" Env="production" \
               ImageUri="${{ needs.build_and_push.outputs.image_uri }}" \
-              AppPort="${APP_PORT}" ContainerCpu="${CPU}" ContainerMemory="${MEMORY}" DesiredCount="${DESIRED_COUNT}"
+              AppPort="${APP_PORT}" ContainerCpu="${CPU}" ContainerMemory="${MEMORY}" DesiredCount="${DESIRED_COUNT}" \
+              OpenAISecretArn="${{ steps.sm_arns_prod.outputs.openai }}" \
+              PineconeSecretArn="${{ steps.sm_arns_prod.outputs.pinecone }}"
 
       - name: Output ALB DNS (production)
         run: |
