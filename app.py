@@ -87,6 +87,11 @@ def chat():
         traceback.print_exc()  # prints full stack to your console
         # Return the error text to your browser for now (DEV ONLY)
         return Response(f"Error: {e}", status=500, mimetype="text/plain")
+    
+@app.route("/health", methods=["GET"])
+def health():
+    # keep it super fast and dependency-free
+    return jsonify(status="ok"), 200
 
 if __name__ == "__main__":
     # Note: Flask debug reloader can import the module twice.
