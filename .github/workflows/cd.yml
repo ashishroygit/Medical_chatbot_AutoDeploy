@@ -72,8 +72,18 @@ jobs:
           aws secretsmanager create-secret --name "${PROJECT_NAME}/staging/PINECONE_API_KEY" --secret-string "${{ secrets.PINECONE_API_KEY }}" >/dev/null 2>&1 || \
           aws secretsmanager put-secret-value --secret-id "${PROJECT_NAME}/staging/PINECONE_API_KEY" --secret-string "${{ secrets.PINECONE_API_KEY }}"
 
+      # --- Debug & validate the template being used ---
+      - name: Show template header
+        run: |
+          echo "Template path: ${{ env.CFN_TEMPLATE }}"
+          sed -n '1,80p' "${{ env.CFN_TEMPLATE }}"
+
+      - name: Validate template with CloudFormation
+        run: aws cloudformation validate-template --template-body "file://${{ env.CFN_TEMPLATE }}"
+
       - name: Deploy CFN (staging)
         run: |
+          set -e
           aws cloudformation deploy \
             --stack-name "${PROJECT_NAME}-staging" \
             --template-file "${{ env.CFN_TEMPLATE }}" \
@@ -106,7 +116,7 @@ jobs:
   deploy_production:
     runs-on: ubuntu-latest
     needs: [build_and_push, deploy_staging]
-    environment: production   # add approval in repo Settings → Environments
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -125,6 +135,7 @@ jobs:
 
       - name: Deploy CFN (production)
         run: |
+          set -e
           aws cloudformation deploy \
             --stack-name "${PROJECT_NAME}-production" \
             --template-file "${{ env.CFN_TEMPLATE }}" \
